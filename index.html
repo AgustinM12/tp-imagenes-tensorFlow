@@ -3,32 +3,87 @@
 
 <head>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body>
-    <h1>Images to Tensors</h1>
-    <h3>Our DOM image:</h3>
-    <img id="gant" src="./jk.jpg" />
+    <main class="flex flex-col bg-blue-200 items-center pb-8">
+        <h1 class="font-bold text-xl text-center underline">Imagenes y Tensores</h1>
+
+        <h3 class="font-semibold text-md">1) Imagen original:</h3>
+        <img id="picture" src="./jk.jpg" height="600" width="800" class="" />
+
+        <h3 class="font-semibold text-md">2) Canva creada a partir de tensores:</h3>
+        <canvas id="canvas" height="600" width="800"></canvas>
+
+        <h3 class="font-semibold text-md">3) Canva recortado verticalmente</h3>
+        <canvas id="croppedCanva"></canvas>
+
+        <h3 class="font-semibold text-md">4) Canva redimensionado</h3>
+        <canvas id="resizedCanvas"></canvas>
+
+        <h3 class="font-semibold text-md">5) Canva espejado</h3>
+        <canvas id="mirrorPicture"></canvas>
+    </main>
     <script>
         window.addEventListener('load', function () {
+
             tf.tidy(() => {
-                // Simply read from the DOM
-                const gantImage = document.getElementById('gant')
-                const gantTensor = tf.browser.fromPixels(gantImage)
+                //////////////// * Convertir imagen del DOM a tensor
+                const pictureImage = document.getElementById('picture')
+
+                const pictureTensor = tf.browser.fromPixels(pictureImage)
                 console.log(
-                    `Successful conversion from DOM to a ${gantTensor.shape} tensor`
+                    `Conversión exitosa del DOM a un tensor con la forma: [${pictureTensor.shape}]`
                 )
 
-                // Now load an image object in JavaScript
-                const cake = new Image()
-                cake.crossOrigin = 'anonymous'
-                cake.src = '/cake.jpg'
-                cake.onload = () => {
-                    const cakeTensor = tf.browser.fromPixels(cake)
-                    console.log(
-                        `Successful conversion from Image() to a ${cakeTensor.shape} tensor`
-                    )
+                //////////////// * Convertir tensor a canva
+                const canvas = document.getElementById("canvas")
+
+                // funcion para mostrar el tensor dibujado
+                function showTensor(tensor, canva) {
+                    tf.browser.toPixels(tensor, canva).then(() => {
+                        console.log('La imagen se ha dibujado en el canvas');
+                    }).catch(err => {
+                        console.error('Error al dibujar la imagen en el canvas:', err);
+                    });
                 }
+
+                showTensor(pictureTensor, canvas)
+
+                ///////////////// * Recortar el tensor de la imagen en vertical.
+                const croppedCanva = document.getElementById("croppedCanva")
+                const picTensorWidth = pictureTensor.shape[1];  // Obtener el ancho de la imagen
+                const halfWidth = (picTensorWidth / 2);  // Calcular la mitad del ancho
+
+                // * la funcion slice recorta el tensor en una parte especifica
+                // * el array [0,0,0] indica de donde iniciara el corte
+                // * [pictureTensor.shape[0] la altura del recorte, en este caso tendra la altura original (filas)
+                // * halfWidth solo utilizara la mitad del ancho original (columnas)
+                // * pictureTensor.shape[2]]) utiliza todos los colores RGB, 3 pero empieza de 0
+                const croppedTensor = tf.slice(pictureTensor, [0, 0, 0], [pictureTensor.shape[0], halfWidth, pictureTensor.shape[2]]);
+
+                constOtherhalf = tf.slice(pictureTensor, [0, halfWidth, 0], [pictureTensor.shape[0], halfWidth, pictureTensor.shape[2]]);
+
+                showTensor(croppedTensor, croppedCanva)
+
+                //////////////// * Redimencionar la imagen
+                const resizedTensor = tf.image.resizeBilinear(constOtherhalf, [128, 128]);
+
+                const resizedCanvas = document.getElementById("resizedCanvas");
+
+                // Normalizar los valores del tensor al rango [0, 1]
+                const normalizedTensor = resizedTensor.div(255);
+
+                showTensor(normalizedTensor, resizedCanvas)
+
+                ////////////// * Espejar imagen
+                // espeja el eje de las columnas
+                const mirrorPicture = document.getElementById("mirrorPicture")
+
+                const tensorEspejado = tf.reverse(pictureTensor, axis = 1);
+
+                showTensor(tensorEspejado, mirrorPicture)
             })
         })
     </script>
